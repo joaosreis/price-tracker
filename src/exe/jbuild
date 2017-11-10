@@ -1,0 +1,8 @@
+(jbuild_version 1)
+
+(executables
+ ((names (main))
+  (public_names (price-tracker-exe))
+  (modules (main))
+  (libraries (price-tracker-lib cmdliner))
+  (package price-tracker-exe)))

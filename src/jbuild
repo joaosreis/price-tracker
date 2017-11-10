@@ -1,0 +1,13 @@
+(jbuild_version 1)
+
+(copy_files# sample-src-folder1/*)
+(copy_files# sample-src-folder2/*)
+(copy_files# parsers/*)
+
+(library
+ ((name price_tracker_lib)   ; doesn't support '-' in the name
+  (public_name price-tracker-lib)
+  (wrapped false)
+  (libraries (unix str lwt cohttp-lwt-unix lambdasoup batteries telegraml))
+  (preprocess (pps (lwt.ppx)))
+  (synopsis "This is a short description of the library.")))

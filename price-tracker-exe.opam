@@ -1,0 +1,14 @@
+opam-version: "1.2"
+maintainer: "joaosreis@outlook.pt"
+authors: ["João Reis"]
+homepage: "https://github.com/joaosreis/price-tracker"
+bug-reports: "https://github.com/joaosreis/price-tracker/issues"
+dev-repo: "https://github.com/joaosreis/price-tracker.git"
+
+build: [
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+
+depends: [
+  "jbuilder" {build & >= "1.0+beta14"}
+]
