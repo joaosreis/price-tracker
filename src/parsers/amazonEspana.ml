@@ -11,8 +11,8 @@ let get_price html =
         let regex = Str.regexp "EUR \\([0-9]+\\)[,\\|\\.]\\([0-9]+\\)" in
         let price_text = soup $ "span#priceblock_ourprice" |> R.leaf_text |> Str.replace_first regex "\\1.\\2" in
         price_text |> print_endline;
-        Utils.Stock (price_text |> float_of_string)
+        Price.Stock (price_text |> float_of_string)
       else
-        Utils.NoStock
+        Price.NoStock
     end
-| Some _ -> Utils.NoStock
+  | Some _ -> Price.NoStock

@@ -1,0 +1,1 @@
+type t = NoStock | Stock of float

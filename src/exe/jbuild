@@ -4,5 +4,6 @@
  ((names (main))
   (public_names (price-tracker-exe))
   (modules (main))
-  (libraries (price-tracker-lib cmdliner))
+  (libraries (price-tracker-lib cmdliner ppx_blob))
+  (preprocess (pps (lwt.ppx ppx_blob)))
   (package price-tracker-exe)))

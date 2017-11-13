@@ -1,14 +1,11 @@
 let () =
-  let module F1 = Watcher.Make(Fnac)
-      (struct
-        let url = "https://www.fnac.pt/Doom-Nintendo-Switch-Jogo-Nintendo-Switch/a1360369"
-        let interval = 5000
-      end) in
-  let module F2 = Watcher.Make(Fnac)
-      (struct
-        let url = "https://www.fnac.pt/Pokemon-Ultra-Sun-3DS-Jogo-Nintendo-3DS/a1263331"
-        let interval = 5000
-      end) in
-  let _ = Lwt_main.run F1.run in
-  let _ = Lwt_main.run F2.run in
-  ()
+  let url1 = "https://www.fnac.pt/Doom-Nintendo-Switch-Jogo-Nintendo-Switch/a1360369" in
+  let interval1 = 5 in
+  let thread1 = Watcher.get_thread "Doom Nintendo Switch" url1 interval1 in
+  let url2 = "https://www.fnac.pt/Pokemon-Ultra-Sun-3DS-Jogo-Nintendo-3DS/a1263331" in
+  let interval2 = 5 in
+  let thread2 = Watcher.get_thread "Pokémon Ultra Sun 3DS" url2 interval2 in
+  Lwt.async thread1;
+  Lwt.async thread2;
+  let never_terminate = fst (Lwt.wait ()) in
+  Lwt_main.run never_terminate
