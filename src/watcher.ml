@@ -30,16 +30,25 @@ module Make
     if (code = 200) then begin
       body |> Cohttp_lwt.Body.to_string
     end
-    else begin
-      raise Http_error
-    end
+    else raise Http_error
 
-  let rec run () =
+  let price_key = Lwt.new_key
+
+  let rec run previous_price () =
     let%lwt html = get_html Object.url in
     let price = Parser.get_price html in
-    let%lwt result = send_message (Printf.sprintf "%s: %s\n%s" Object.name (match price with NoStock -> "Sem stock" | Stock p -> string_of_float p) Object.url) in
-    let%lwt () = float_of_int Object.interval |> Lwt_unix.sleep in
-    run ()
+    let message = match previous_price with
+      | Some pp when not (Price.equal price pp) ->
+          Some (Printf.sprintf "%s: %s\nAnterior: %s\n%s" Object.name (match price with NoStock -> "Sem stock" | Stock p -> string_of_float p) (match pp with NoStock -> "Sem stock" | Stock p -> string_of_float p) Object.url)
+      | None ->
+          Some (Printf.sprintf "%s: %s\n%s" Object.name (match price with NoStock -> "Sem stock" | Stock p -> string_of_float p) Object.url)
+      | Some _ -> None in
+    match message with
+      Some m ->
+        let%lwt result = send_message m in
+        let%lwt () = float_of_int Object.interval |> Lwt_unix.sleep in
+        run (Some price) ()
+    | None -> run (Some price) ()
 end
 
 let get_thread name url interval =
@@ -57,10 +66,10 @@ let get_thread name url interval =
     let interval = interval
   end) in
   match (get_site url) with
-    `AmazonEspana -> let module W = Make(AmazonEspana)(Object) in W.run
-  | `BestGames -> let module W = Make(BestGames)(Object) in W.run
-  | `Fnac -> let module W = Make(Fnac)(Object) in W.run
-  | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run
-  | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run
-  | `Worten -> let module W = Make(Worten)(Object) in W.run
+    `AmazonEspana -> let module W = Make(AmazonEspana)(Object) in W.run None
+  | `BestGames -> let module W = Make(BestGames)(Object) in W.run None
+  | `Fnac -> let module W = Make(Fnac)(Object) in W.run None
+  | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run None
+  | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run None
+  | `Worten -> let module W = Make(Worten)(Object) in W.run None
   | `NotSupported -> raise Not_supported
