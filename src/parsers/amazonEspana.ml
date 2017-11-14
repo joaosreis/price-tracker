@@ -16,3 +16,8 @@ let get_price html =
         Price.NoStock
     end
   | Some _ -> Price.NoStock
+
+let get_name html =
+  let open Soup in
+  let soup = parse html in
+  soup $ "span#productTitle" |> R.leaf_text |> String.trim

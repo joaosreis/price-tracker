@@ -8,15 +8,18 @@ exception Not_supported
 module Make
     (Parser : sig
        val get_price : string -> Price.t
+       val get_name : string -> string
      end)
     (Object : sig
-       val name : string
        val url : string
        val interval : int
      end) = struct
 
-  let send_message text = Bot.send_message ~chat_id:87784254
+  let send_message id text =
+    Bot.send_message ~chat_id:id
       ~text:text
+      ~parse_mode:(Some Telegram.Api.ParseMode.Markdown)
+      ~disable_web_page_preview:false
       ~disable_notification:false
       ~reply_to:None
       ~reply_markup:None
@@ -34,24 +37,26 @@ module Make
 
   let price_key = Lwt.new_key
 
-  let rec run previous_price () =
+  let rec run id previous_price () =
     let%lwt html = get_html Object.url in
+    let name = Parser.get_name html in
     let price = Parser.get_price html in
+    let price_string = match price with NoStock -> "Sem stock" | Stock p -> string_of_float p in
     let message = match previous_price with
       | Some pp when not (Price.equal price pp) ->
-          Some (Printf.sprintf "%s: %s\nAnterior: %s\n%s" Object.name (match price with NoStock -> "Sem stock" | Stock p -> string_of_float p) (match pp with NoStock -> "Sem stock" | Stock p -> string_of_float p) Object.url)
+          Some (Printf.sprintf "*%s*\nAtual: _%s_\nAnterior: _%s_\n%s" name price_string (match pp with NoStock -> "Sem stock" | Stock p -> string_of_float p) Object.url)
       | None ->
-          Some (Printf.sprintf "%s: %s\n%s" Object.name (match price with NoStock -> "Sem stock" | Stock p -> string_of_float p) Object.url)
+          Some (Printf.sprintf "*%s*\nAtual: _%s_\n%s" name price_string Object.url)
       | Some _ -> None in
     match message with
       Some m ->
-        let%lwt result = send_message m in
+        let%lwt result = send_message id m in
         let%lwt () = float_of_int Object.interval |> Lwt_unix.sleep in
-        run (Some price) ()
-    | None -> run (Some price) ()
+        run id (Some price) ()
+    | None -> run id (Some price) ()
 end
 
-let get_thread name url interval =
+let get_thread id url interval =
   let get_site url =
     if (String.exists url "amazon.es") then `AmazonEspana
     else if (String.exists url "bestgames.pt") then `BestGames
@@ -61,15 +66,14 @@ let get_thread name url interval =
     else if (String.exists url "worten.pt") then `Worten
     else `NotSupported in
   let module Object = (struct
-    let name = name
     let url = url
     let interval = interval
   end) in
   match (get_site url) with
-    `AmazonEspana -> let module W = Make(AmazonEspana)(Object) in W.run None
-  | `BestGames -> let module W = Make(BestGames)(Object) in W.run None
-  | `Fnac -> let module W = Make(Fnac)(Object) in W.run None
-  | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run None
-  | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run None
-  | `Worten -> let module W = Make(Worten)(Object) in W.run None
+    `AmazonEspana -> let module W = Make(AmazonEspana)(Object) in W.run id None
+  | `BestGames -> let module W = Make(BestGames)(Object) in W.run id None
+  | `Fnac -> let module W = Make(Fnac)(Object) in W.run id None
+  | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run id None
+  | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run id None
+  | `Worten -> let module W = Make(Worten)(Object) in W.run id None
   | `NotSupported -> raise Not_supported
