@@ -1,0 +1,3 @@
+[submodule "TelegraML"]
+	path = TelegraML
+	url = git@github.com:joaosreis/TelegraML.git
