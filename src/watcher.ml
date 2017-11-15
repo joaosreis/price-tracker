@@ -5,6 +5,12 @@ type website = [ `AmazonEspana | `BestGames | `Fnac | `GamingReplay | `ToyJapan 
 exception Http_error
 exception Not_supported
 
+module Bot = Telegram.Api.Mk(struct
+  include Telegram.BotDefaults
+
+  let token = Configuration.token
+end)
+
 module Make
     (Parser : sig
        val get_price : string -> Price.t
@@ -42,7 +48,8 @@ module Make
     let name = Parser.get_name html in
     let price = Parser.get_price html in
     let price_string = match price with NoStock -> "Sem stock" | Stock p -> string_of_float p in
-    let message = match previous_price with
+    let message = (*Some (Printf.sprintf "*%s*\nAtual: _%s_\n%s" name price_string Object.url)*)
+    match previous_price with
       | Some pp when not (Price.equal price pp) ->
           Some (Printf.sprintf "*%s*\nAtual: _%s_\nAnterior: _%s_\n%s" name price_string (match pp with NoStock -> "Sem stock" | Stock p -> string_of_float p) Object.url)
       | None ->

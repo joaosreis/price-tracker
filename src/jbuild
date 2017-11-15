@@ -8,6 +8,6 @@
  ((name price_tracker_lib)   ; doesn't support '-' in the name
   (public_name price-tracker-lib)
   (wrapped false)
-  (libraries (unix str lwt cohttp-lwt-unix lambdasoup batteries telegraml))
+  (libraries (unix str lwt cohttp-lwt-unix lambdasoup batteries telegraml sqlite3))
   (preprocess (pps (lwt.ppx)))
   (synopsis "This is a short description of the library.")))
