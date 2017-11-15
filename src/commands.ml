@@ -14,7 +14,7 @@ let start message =
     let _ = step stmt in
     let _ = finalize stmt in
     let _ = db_close db in
-    SendMessage (message.chat.id, "Registado!", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
+    SendMessage (message.chat.id, "Para fazer tracking de um produto envie `/track url_do_produto`", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
   with InternalError s | Error s -> SendMessage (message.chat.id, s, Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
 
 let track message  =
