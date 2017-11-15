@@ -1,6 +1,6 @@
 # Invoke `make` to build, `make clean` to clean up, etc.
 
-.PHONY: default all utop test clean
+.PHONY: default all utop test deps clean
 
 default: all
 
@@ -18,6 +18,10 @@ utop: all
 # Build and run tests
 test: all
 	./bin/price-tracker-exe test
+
+# Install dependencies
+deps:
+	jbuilder external-lib-deps --missing @install
 
 # Clean up
 clean:
