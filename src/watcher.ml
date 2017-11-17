@@ -1,6 +1,6 @@
 open Batteries
 
-type website = [ `Alientech | `AmazonEspana | `BestGames | `Fnac | `GamingReplay | `GearBest | `Pcdiga | `ToyJapan | `Worten | `NotSupported ]
+type website = [ `Alientech | `AmazonEspana | `Aquario | `Banggood | `BestGames | `Fnac | `GamingReplay | `GearBest | `Globaldata | `Pcdiga | `ToyJapan | `Worten | `NotSupported ]
 
 exception Http_error
 exception Not_supported
@@ -87,10 +87,13 @@ let get_thread id chat_id url interval =
   let get_site url =
     if (String.exists url "alientech.pt") then `Alientech
     else if (String.exists url "amazon.es") then `AmazonEspana
+    else if (String.exists url "aquario.pt") then `Aquario
+    else if (String.exists url "banggood.com") then `Banggood
     else if (String.exists url "bestgames.pt") then `BestGames
     else if (String.exists url "fnac.pt") then `Fnac
     else if (String.exists url "gamingreplay.com") then `GamingReplay
     else if (String.exists url "gearbest.com") then `GearBest
+    else if (String.exists url "globaldata.pt") then `Globaldata
     else if (String.exists url "pcdiga.com") then `Pcdiga
     else if (String.exists url "toyland.pt") then `ToyJapan
     else if (String.exists url "worten.pt") then `Worten
@@ -102,10 +105,13 @@ let get_thread id chat_id url interval =
   let f = match (get_site url) with
     `Alientech -> let module W = Make(Alientech)(Object) in W.run
   | `AmazonEspana -> let module W = Make(AmazonEspana)(Object) in W.run
+  | `Aquario  -> let module W = Make(Aquario)(Object) in W.run
+  | `Banggood -> let module W = Make(Banggood)(Object) in W.run
   | `BestGames -> let module W = Make(BestGames)(Object) in W.run
   | `Fnac -> let module W = Make(Fnac)(Object) in W.run
   | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run
   | `GearBest -> let module W = Make(GearBest)(Object) in W.run
+  | `Globaldata -> let module W = Make(Globaldata)(Object) in W.run
   | `Pcdiga -> let module W = Make(Pcdiga)(Object) in W.run
   | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run
   | `Worten -> let module W = Make(Worten)(Object) in W.run
