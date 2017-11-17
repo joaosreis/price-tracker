@@ -1,15 +1,15 @@
 open Batteries
 
-type website = [ `AmazonEspana | `BestGames | `Fnac | `GamingReplay | `GearBest | `ToyJapan | `Worten | `NotSupported ]
+type website = [ `AmazonEspana | `BestGames | `Fnac | `GamingReplay | `GearBest | `Pcdiga | `ToyJapan | `Worten | `NotSupported ]
 
 exception Http_error
 exception Not_supported
 
 module Bot = Telegram.Api.Mk(struct
-  include Telegram.BotDefaults
+    include Telegram.BotDefaults
 
-  let token = Configuration.token
-end)
+    let token = Configuration.token
+  end)
 
 let send_message id text =
   Bot.send_message ~chat_id:id
@@ -20,11 +20,24 @@ let send_message id text =
     ~reply_to:None
     ~reply_markup:None
 
+let url_of_string s =
+  let uri1 = Uri.of_string s in
+  Uri.to_string uri1 |> print_endline;
+  let uri2 = match Uri.scheme uri1 with
+      None -> Uri.with_scheme uri1 (Some "http")
+    | Some _ -> uri1 in
+  Uri.to_string uri2 |> print_endline;
+  let uri_final = match Uri.host uri2 with
+      None -> Uri.with_path uri2 ("//" ^ s)
+    | Some _ -> uri2 in
+  Uri.to_string uri_final |> print_endline;
+  uri_final
+
 let get_html url =
   let open Lwt in
   let open Cohttp in
   let open Cohttp_lwt_unix in
-  Client.get (Uri.of_string url) >>= fun (resp, body) ->
+  Client.get url >>= fun (resp, body) ->
   let code = resp |> Response.status |> Code.code_of_status in
   if (code = 200) then begin
     body |> Cohttp_lwt.Body.to_string
@@ -37,7 +50,7 @@ module Make
        val get_name : string -> string
      end)
     (Object : sig
-       val url : string
+       val url : Uri.t
        val interval : int
      end) = struct
 
@@ -48,12 +61,12 @@ module Make
     let name = Parser.get_name html in
     let price = Parser.get_price html in
     let price_string = match price with NoStock -> "Sem stock" | Stock p -> string_of_float p in
-    let message = (*Some (Printf.sprintf "*%s*\nAtual: _%s_\n%s" name price_string Object.url)*)
-    match previous_price with
+    let message = (*Some (Printf.sprintf "*%s*\nAtual: _%s_\n%s" name price_string (Uri.to_string Object.url))*)
+      match previous_price with
       | Some pp when not (Price.equal price pp) ->
-          Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\nAnterior: <i>%s</i>\n%s" name price_string (match pp with NoStock -> "Sem stock" | Stock p -> string_of_float p) Object.url)
+          Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\nAnterior: <i>%s</i>\n%s" name price_string (match pp with NoStock -> "Sem stock" | Stock p -> string_of_float p) (Uri.to_string Object.url))
       | None ->
-          Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\n%s" name price_string Object.url)
+          Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\n%s" name price_string (Uri.to_string Object.url))
       | Some _ -> None in
     match message with
       Some m ->
@@ -70,11 +83,12 @@ let get_thread id url interval =
     else if (String.exists url "fnac.pt") then `Fnac
     else if (String.exists url "gamingreplay.com") then `GamingReplay
     else if (String.exists url "gearbest.com") then `GearBest
+    else if (String.exists url "pcdiga.com") then `Pcdiga
     else if (String.exists url "toyland.pt") then `ToyJapan
     else if (String.exists url "worten.pt") then `Worten
     else `NotSupported in
   let module Object = (struct
-    let url = url
+    let url = url_of_string url
     let interval = interval
   end) in
   match (get_site url) with
@@ -83,6 +97,7 @@ let get_thread id url interval =
   | `Fnac -> let module W = Make(Fnac)(Object) in W.run id None
   | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run id None
   | `GearBest -> let module W = Make(GearBest)(Object) in W.run id None
+  | `Pcdiga -> let module W = Make(Pcdiga)(Object) in W.run id None
   | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run id None
   | `Worten -> let module W = Make(Worten)(Object) in W.run id None
   | `NotSupported -> raise Not_supported

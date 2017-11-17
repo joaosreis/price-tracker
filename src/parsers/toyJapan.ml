@@ -4,11 +4,11 @@ let get_price html =
   let open Soup in
   let soup = parse html in
   let availabilitySpan = soup $ "span#availability_value" in
-  if (String.exists (availabilitySpan |> R.attribute "class") "label-success") then
-    let regex = Str.regexp "\\([0-9]+\\)[,\\|\\.]\\([0-9]+\\).*" in
-      let price_text = soup $ "span#our_price_display" |> R.leaf_text |> Str.replace_first regex "\\1.\\2" in
-      price_text |> print_endline;
-      Price.Stock (price_text |> float_of_string)
+  if (String.exists (availabilitySpan |> R.attribute "class") "label-success") then begin
+    print_endline "here";
+    let x = Price.Stock (soup $ "meta[property='product:price:amount']" |> R.attribute "content" |> float_of_string) in
+    print_endline "here2"; x
+  end
 else
   Price.NoStock
 
