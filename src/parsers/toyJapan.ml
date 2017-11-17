@@ -4,13 +4,10 @@ let get_price html =
   let open Soup in
   let soup = parse html in
   let availabilitySpan = soup $ "span#availability_value" in
-  if (String.exists (availabilitySpan |> R.attribute "class") "label-success") then begin
-    print_endline "here";
-    let x = Price.Stock (soup $ "meta[property='product:price:amount']" |> R.attribute "content" |> float_of_string) in
-    print_endline "here2"; x
-  end
-else
-  Price.NoStock
+  if (String.exists (availabilitySpan |> R.attribute "class") "label-success") then
+    Price.Stock (soup $ "meta[property='product:price:amount']" |> R.attribute "content" |> float_of_string)
+  else
+    Price.NoStock
 
 let get_name html =
   let open Soup in

@@ -21,17 +21,13 @@ let send_message id text =
     ~reply_markup:None
 
 let url_of_string s =
-  let uri1 = Uri.of_string s in
-  Uri.to_string uri1 |> print_endline;
-  let uri2 = match Uri.scheme uri1 with
-      None -> Uri.with_scheme uri1 (Some "http")
-    | Some _ -> uri1 in
-  Uri.to_string uri2 |> print_endline;
-  let uri_final = match Uri.host uri2 with
-      None -> Uri.with_path uri2 ("//" ^ s)
-    | Some _ -> uri2 in
-  Uri.to_string uri_final |> print_endline;
-  uri_final
+  let s1 = match Uri.of_string s |> Uri.host with
+      None -> "//" ^ s
+    | Some _ -> s in
+  let s2 = match Uri.of_string s1 |> Uri.scheme with
+      None -> "http:" ^ s1
+    | Some _ -> s1 in
+    Uri.of_string s2
 
 let get_html url =
   let open Lwt in
