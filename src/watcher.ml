@@ -1,6 +1,6 @@
 open Batteries
 
-type website = [ `AmazonEspana | `BestGames | `Fnac | `GamingReplay | `GearBest | `Pcdiga | `ToyJapan | `Worten | `NotSupported ]
+type website = [ `Alientech | `AmazonEspana | `BestGames | `Fnac | `GamingReplay | `GearBest | `Pcdiga | `ToyJapan | `Worten | `NotSupported ]
 
 exception Http_error
 exception Not_supported
@@ -21,24 +21,35 @@ let send_message id text =
     ~reply_markup:None
 
 let url_of_string s =
+  print_endline s;
   let s1 = match Uri.of_string s |> Uri.host with
       None -> "//" ^ s
     | Some _ -> s in
+  print_endline s1;
   let s2 = match Uri.of_string s1 |> Uri.scheme with
       None -> "http:" ^ s1
     | Some _ -> s1 in
+  print_endline s2;
     Uri.of_string s2
 
-let get_html url =
+let rec get_html id chat_id url =
   let open Lwt in
   let open Cohttp in
   let open Cohttp_lwt_unix in
   Client.get url >>= fun (resp, body) ->
-  let code = resp |> Response.status |> Code.code_of_status in
-  if (code = 200) then begin
+  let code = resp |> Response.status |> Code.code_of_status in  
+  if (code = 302) then begin
+    let url = resp |> Response.headers |> Header.get_location |> Option.get in
+    let db = Database.open_db () in
+    let stmt = Database.update_item_stmt db id chat_id (Uri.to_string url) in
+    let _ = Sqlite3.step stmt in
+    let _ = Sqlite3.db_close db in
+    get_html id chat_id url
+  end
+  else if (code = 200) then begin
     body |> Cohttp_lwt.Body.to_string
   end
-  else raise Http_error
+else raise Http_error
 
 module Make
     (Parser : sig
@@ -52,12 +63,12 @@ module Make
 
   let price_key = Lwt.new_key
 
-  let rec run id previous_price () =
-    let%lwt html = get_html Object.url in
+  let rec run id chat_id previous_price () =
+    let%lwt html = get_html id chat_id Object.url in
     let name = Parser.get_name html in
     let price = Parser.get_price html in
     let price_string = match price with NoStock -> "Sem stock" | Stock p -> string_of_float p in
-    let message = (*Some (Printf.sprintf "*%s*\nAtual: _%s_\n%s" name price_string (Uri.to_string Object.url))*)
+    let message =
       match previous_price with
       | Some pp when not (Price.equal price pp) ->
           Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\nAnterior: <i>%s</i>\n%s" name price_string (match pp with NoStock -> "Sem stock" | Stock p -> string_of_float p) (Uri.to_string Object.url))
@@ -66,15 +77,16 @@ module Make
       | Some _ -> None in
     match message with
       Some m ->
-        let%lwt result = send_message id m in
+        let%lwt result = send_message chat_id m in
         let%lwt () = float_of_int Object.interval |> Lwt_unix.sleep in
-        run id (Some price) ()
-    | None -> run id (Some price) ()
+        run id chat_id (Some price) ()
+    | None -> run id chat_id (Some price) ()
 end
 
-let get_thread id url interval =
+let get_thread id chat_id url interval =
   let get_site url =
-    if (String.exists url "amazon.es") then `AmazonEspana
+    if (String.exists url "alientech.pt") then `Alientech
+    else if (String.exists url "amazon.es") then `AmazonEspana
     else if (String.exists url "bestgames.pt") then `BestGames
     else if (String.exists url "fnac.pt") then `Fnac
     else if (String.exists url "gamingreplay.com") then `GamingReplay
@@ -87,13 +99,15 @@ let get_thread id url interval =
     let url = url_of_string url
     let interval = interval
   end) in
-  match (get_site url) with
-    `AmazonEspana -> let module W = Make(AmazonEspana)(Object) in W.run id None
-  | `BestGames -> let module W = Make(BestGames)(Object) in W.run id None
-  | `Fnac -> let module W = Make(Fnac)(Object) in W.run id None
-  | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run id None
-  | `GearBest -> let module W = Make(GearBest)(Object) in W.run id None
-  | `Pcdiga -> let module W = Make(Pcdiga)(Object) in W.run id None
-  | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run id None
-  | `Worten -> let module W = Make(Worten)(Object) in W.run id None
+  let f = match (get_site url) with
+    `Alientech -> let module W = Make(Alientech)(Object) in W.run
+  | `AmazonEspana -> let module W = Make(AmazonEspana)(Object) in W.run
+  | `BestGames -> let module W = Make(BestGames)(Object) in W.run
+  | `Fnac -> let module W = Make(Fnac)(Object) in W.run
+  | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run
+  | `GearBest -> let module W = Make(GearBest)(Object) in W.run
+  | `Pcdiga -> let module W = Make(Pcdiga)(Object) in W.run
+  | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run
+  | `Worten -> let module W = Make(Worten)(Object) in W.run
   | `NotSupported -> raise Not_supported
+  in f id chat_id None
