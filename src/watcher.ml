@@ -1,8 +1,10 @@
 open Batteries
 
-type website = [ `Alientech | `AmazonEspana | `Aquario | `Banggood | `BestGames | `Fnac | `GamingReplay | `GearBest | `Globaldata | `Pcdiga | `ToyJapan | `Worten | `NotSupported ]
+type website = [ `Alientech | `AmazonEspana | `Aquario | `Banggood | `BestGames | `Fnac
+| `GamingReplay | `GearBest | `Globaldata | `Pccomponentes | `Pcdiga | `ToyJapan | `Worten
+| `NotSupported ]
 
-exception Http_error
+exception Http_error of string
 exception Not_supported
 
 module Bot = Telegram.Api.Mk(struct
@@ -49,7 +51,7 @@ let rec get_html id chat_id url =
   else if (code = 200) then begin
     body |> Cohttp_lwt.Body.to_string
   end
-else raise Http_error
+else raise (Http_error (Uri.to_string url)) (* TODO improve error handling *)
 
 module Make
     (Parser : sig
@@ -94,6 +96,7 @@ let get_thread id chat_id url interval =
     else if (String.exists url "gamingreplay.com") then `GamingReplay
     else if (String.exists url "gearbest.com") then `GearBest
     else if (String.exists url "globaldata.pt") then `Globaldata
+    else if (String.exists url "pccomponentes.com" || String.exists url "pccomponentes.pt") then `Pccomponentes
     else if (String.exists url "pcdiga.com") then `Pcdiga
     else if (String.exists url "toyland.pt") then `ToyJapan
     else if (String.exists url "worten.pt") then `Worten
@@ -112,6 +115,7 @@ let get_thread id chat_id url interval =
   | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run
   | `GearBest -> let module W = Make(GearBest)(Object) in W.run
   | `Globaldata -> let module W = Make(Globaldata)(Object) in W.run
+  | `Pccomponentes -> let module W = Make(Pccomponentes)(Object) in W.run
   | `Pcdiga -> let module W = Make(Pcdiga)(Object) in W.run
   | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run
   | `Worten -> let module W = Make(Worten)(Object) in W.run
