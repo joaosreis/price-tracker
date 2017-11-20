@@ -24,29 +24,42 @@ let track message  =
   try
     let db = Database.open_db () in
     let _ = Database.begin_transaction db in
-    begin try
-        let _ = Str.string_match regex text 0 in
-        let url = Str.matched_group 2 text in
-        let stmt = Database.insert_item_stmt db message.chat.id url in
-        let _ = step stmt in
-        let _ = finalize stmt in
-        let id = last_insert_rowid db in
-        let _ = db_close db in
-        let interval = 5 in
-        let thread = Watcher.get_thread id message.chat.id url None interval in
-        Lwt.async thread;
-        let _ = Database.commit db in
-        Nothing
-      with
-        Not_found ->
-          let _ = Database.rollback db in
-          SendMessage (message.chat.id, "URL necessário", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
-      | Watcher.Not_supported s ->
-          let _ = Database.rollback db in
-          SendMessage (message.chat.id, "Site não suportado", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
+    try
+      let _ = Str.string_match regex text 0 in
+      let url = Str.matched_group 2 text in
+      let site = Watcher.get_site url in
+      match site with
+        `NotSupported -> SendMessage (message.chat.id, "Site não suportado", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
       | _ ->
-          let _ = Database.rollback db in
-          print_endline "Error";
-          SendMessage (message.chat.id, "Ocorreu um erro, tente novamente", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
-    end
-  with _ -> print_endline "Error"; SendMessage (message.chat.id, "Ocorreu um erro, tente novamente", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
+          let stmt = Database.insert_item_stmt db message.chat.id url in
+          let _ = step stmt in
+          let _ = finalize stmt in
+          let id = last_insert_rowid db in
+          let interval = 5 in
+          let thread = Watcher.get_thread id message.chat.id url site None interval in
+          Lwt.async thread;
+          let _ = Database.commit db in
+          let _ = Sqlite3.db_close db in
+          Nothing
+    with
+      Not_found ->
+        let _ = Database.rollback db in
+        let _ = Sqlite3.db_close db in
+        SendMessage (message.chat.id, "URL necessário", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
+    | Watcher.Not_supported s ->
+        let _ = Database.rollback db in
+        let _ = Sqlite3.db_close db in
+        SendMessage (message.chat.id, "Site não suportado", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
+    | Sqlite3.Error s | Sqlite3.InternalError s ->
+        let _ = Database.rollback db in
+        let _ = Sqlite3.db_close db in
+        print_endline s;
+        SendMessage (message.chat.id, "Ocorreu um erro, tente novamente", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
+    | _ ->
+        let _ = Database.rollback db in
+        let _ = Sqlite3.db_close db in
+        print_endline "Error";
+        SendMessage (message.chat.id, "Ocorreu um erro, tente novamente", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
+  with Sqlite3.Error s | Sqlite3.InternalError s ->
+    print_endline s;
+    SendMessage (message.chat.id, "Ocorreu um erro, tente novamente", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)
