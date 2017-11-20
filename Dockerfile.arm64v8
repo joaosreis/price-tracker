@@ -1,0 +1,33 @@
+FROM opam:debian-arm64v8-stable
+
+WORKDIR /home/opam/src
+
+COPY TelegraML/telegraml.opam TelegraML/
+
+RUN opam pin add -yn telegraml TelegraML/ && \
+    opam depext -u telegraml
+
+COPY price-tracker-exe.opam .
+
+RUN opam pin add -yn price-tracker-exe . && \
+    opam depext price-tracker-exe && \
+    opam install --deps-only price-tracker-exe
+
+COPY . .
+
+RUN sudo chown -R opam /home/opam/src && \
+    opam config exec make deps && \
+    opam config exec make && \
+    opam depext -ln price-tracker-exe | egrep -o "\-\s.*" | sed "s/- //" > depexts
+
+FROM arm64v8/debian:stable
+
+WORKDIR /app
+
+COPY --from=0 /home/opam/src/bin/price-tracker-exe price-tracker.exe
+
+COPY --from=0 /home/opam/src/depexts depexts
+
+RUN apt-get update && cat depexts | xargs apt-get install -y && rm -rf /var/cache/apt/*
+
+CMD ./price-tracker.exe
