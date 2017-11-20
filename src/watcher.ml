@@ -1,8 +1,8 @@
 open Batteries
 
 type website = [ `Alientech | `AmazonEspana | `Aquario | `Banggood | `BestGames | `Fnac
-               | `GamingReplay | `GearBest | `Globaldata | `Pccomponentes | `Pcdiga | `ToyJapan | `Worten
-               | `NotSupported ]
+               | `GamingReplay | `GearBest | `Globaldata | `Novoatalho | `Pccomponentes
+               | `Pcdiga | `ToyJapan | `Worten | `NotSupported ]
 
 exception Http_error of string
 exception Not_supported of string
@@ -23,15 +23,12 @@ let send_message id text =
     ~reply_markup:None
 
 let url_of_string s =
-  print_endline s;
   let s1 = match Uri.of_string s |> Uri.host with
       None -> "//" ^ s
     | Some _ -> s in
-  print_endline s1;
   let s2 = match Uri.of_string s1 |> Uri.scheme with
       None -> "http:" ^ s1
     | Some _ -> s1 in
-  print_endline s2;
   Uri.of_string s2
 
 let rec get_html id chat_id url =
@@ -104,6 +101,7 @@ let get_thread id chat_id url previous_price interval =
     else if (String.exists url "gamingreplay.com") then `GamingReplay
     else if (String.exists url "gearbest.com") then `GearBest
     else if (String.exists url "globaldata.pt") then `Globaldata
+    else if (String.exists url "novoatalho.pt") then `Novoatalho
     else if (String.exists url "pccomponentes.com" || String.exists url "pccomponentes.pt") then `Pccomponentes
     else if (String.exists url "pcdiga.com") then `Pcdiga
     else if (String.exists url "toyland.pt") then `ToyJapan
@@ -123,6 +121,7 @@ let get_thread id chat_id url previous_price interval =
     | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run
     | `GearBest -> let module W = Make(GearBest)(Object) in W.run
     | `Globaldata -> let module W = Make(Globaldata)(Object) in W.run
+    | `Novoatalho -> let module W = Make(Novoatalho)(Object) in W.run
     | `Pccomponentes -> let module W = Make(Pccomponentes)(Object) in W.run
     | `Pcdiga -> let module W = Make(Pcdiga)(Object) in W.run
     | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run
