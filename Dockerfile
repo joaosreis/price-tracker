@@ -18,6 +18,17 @@ COPY . .
 
 RUN sudo chown -R opam /home/opam/src && \
     opam config exec make deps && \
-    opam config exec make
+    opam config exec make && \
+    opam depext -ln price-tracker-exe | egrep -o "\-\s.*" | sed "s/- //" > depexts
 
-ENTRYPOINT [ "bin/price-tracker-exe" ]
+FROM alpine
+
+WORKDIR /app
+
+COPY --from=0 /home/opam/src/bin/price-tracker-exe price-tracker.exe
+
+COPY --from=0 /home/opam/src/depexts depexts
+
+RUN cat depexts | xargs apk --update add && rm -rf /var/cache/apk/*
+
+CMD ./price-tracker.exe

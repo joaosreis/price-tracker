@@ -1,11 +1,11 @@
 open Batteries
 
 type website = [ `Alientech | `AmazonEspana | `Aquario | `Banggood | `BestGames | `Fnac
-| `GamingReplay | `GearBest | `Globaldata | `Pccomponentes | `Pcdiga | `ToyJapan | `Worten
-| `NotSupported ]
+               | `GamingReplay | `GearBest | `Globaldata | `Pccomponentes | `Pcdiga | `ToyJapan | `Worten
+               | `NotSupported ]
 
 exception Http_error of string
-exception Not_supported
+exception Not_supported of string
 
 module Bot = Telegram.Api.Mk(struct
     include Telegram.BotDefaults
@@ -32,7 +32,7 @@ let url_of_string s =
       None -> "http:" ^ s1
     | Some _ -> s1 in
   print_endline s2;
-    Uri.of_string s2
+  Uri.of_string s2
 
 let rec get_html id chat_id url =
   let open Lwt in
@@ -43,7 +43,7 @@ let rec get_html id chat_id url =
   if (code = 302) then begin
     let url = resp |> Response.headers |> Header.get_location |> Option.get in
     let db = Database.open_db () in
-    let stmt = Database.update_item_stmt db id chat_id (Uri.to_string url) in
+    let stmt = Database.update_item_url_stmt db id (Uri.to_string url) in
     let _ = Sqlite3.step stmt in
     let _ = Sqlite3.db_close db in
     get_html id chat_id url
@@ -51,7 +51,7 @@ let rec get_html id chat_id url =
   else if (code = 200) then begin
     body |> Cohttp_lwt.Body.to_string
   end
-else raise (Http_error (Uri.to_string url)) (* TODO improve error handling *)
+  else raise (Http_error (Uri.to_string url)) (* TODO improve error handling *)
 
 module Make
     (Parser : sig
@@ -73,8 +73,16 @@ module Make
     let message =
       match previous_price with
       | Some pp when not (Price.equal price pp) ->
+          let db = Database.open_db () in
+          let stmt = Database.update_item_price_stmt db id price in
+          let _ = Sqlite3.step stmt in
+          let _ = Sqlite3.db_close db in
           Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\nAnterior: <i>%s</i>\n%s" name price_string (match pp with NoStock -> "Sem stock" | Stock p -> string_of_float p) (Uri.to_string Object.url))
       | None ->
+          let db = Database.open_db () in
+          let stmt = Database.update_item_price_stmt db id price in
+          let _ = Sqlite3.step stmt in
+          let _ = Sqlite3.db_close db in
           Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\n%s" name price_string (Uri.to_string Object.url))
       | Some _ -> None in
     match message with
@@ -85,7 +93,7 @@ module Make
     | None -> run id chat_id (Some price) ()
 end
 
-let get_thread id chat_id url interval =
+let get_thread id chat_id url previous_price interval =
   let get_site url =
     if (String.exists url "alientech.pt") then `Alientech
     else if (String.exists url "amazon.es") then `AmazonEspana
@@ -106,18 +114,18 @@ let get_thread id chat_id url interval =
     let interval = interval
   end) in
   let f = match (get_site url) with
-    `Alientech -> let module W = Make(Alientech)(Object) in W.run
-  | `AmazonEspana -> let module W = Make(AmazonEspana)(Object) in W.run
-  | `Aquario  -> let module W = Make(Aquario)(Object) in W.run
-  | `Banggood -> let module W = Make(Banggood)(Object) in W.run
-  | `BestGames -> let module W = Make(BestGames)(Object) in W.run
-  | `Fnac -> let module W = Make(Fnac)(Object) in W.run
-  | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run
-  | `GearBest -> let module W = Make(GearBest)(Object) in W.run
-  | `Globaldata -> let module W = Make(Globaldata)(Object) in W.run
-  | `Pccomponentes -> let module W = Make(Pccomponentes)(Object) in W.run
-  | `Pcdiga -> let module W = Make(Pcdiga)(Object) in W.run
-  | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run
-  | `Worten -> let module W = Make(Worten)(Object) in W.run
-  | `NotSupported -> raise Not_supported
-  in f id chat_id None
+      `Alientech -> let module W = Make(Alientech)(Object) in W.run
+    | `AmazonEspana -> let module W = Make(AmazonEspana)(Object) in W.run
+    | `Aquario  -> let module W = Make(Aquario)(Object) in W.run
+    | `Banggood -> let module W = Make(Banggood)(Object) in W.run
+    | `BestGames -> let module W = Make(BestGames)(Object) in W.run
+    | `Fnac -> let module W = Make(Fnac)(Object) in W.run
+    | `GamingReplay -> let module W = Make(GamingReplay)(Object) in W.run
+    | `GearBest -> let module W = Make(GearBest)(Object) in W.run
+    | `Globaldata -> let module W = Make(Globaldata)(Object) in W.run
+    | `Pccomponentes -> let module W = Make(Pccomponentes)(Object) in W.run
+    | `Pcdiga -> let module W = Make(Pcdiga)(Object) in W.run
+    | `ToyJapan ->  let module W = Make(ToyJapan)(Object) in W.run
+    | `Worten -> let module W = Make(Worten)(Object) in W.run
+    | `NotSupported -> raise (Not_supported url)
+  in f id chat_id previous_price
