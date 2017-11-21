@@ -1,6 +1,9 @@
 open Batteries
 
 let () =
+  Log.set_log_level Log.DEBUG;
+  Log.color_on();
+
   let db = Database.open_db () in
   let _ = Database.initialize db in
   let open Sqlite3 in

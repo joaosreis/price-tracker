@@ -4,7 +4,7 @@ type website = [ `Alientech | `AmazonEspana | `Aquario | `Banggood | `BestGames 
                | `GamingReplay | `GearBest | `Globaldata | `Novoatalho | `Pccomponentes
                | `Pcdiga | `ToyJapan | `Worten | `NotSupported ]
 
-exception Http_error of string
+exception Http_error of int * string
 exception Not_supported of string
 
 module Bot = Telegram.Api.Mk(struct
@@ -39,16 +39,27 @@ let rec get_html id chat_id url =
   let code = resp |> Response.status |> Code.code_of_status in  
   if (code = 302) then begin
     let url = resp |> Response.headers |> Header.get_location |> Option.get in
-    let db = Database.open_db () in
-    let stmt = Database.update_item_url_stmt db id (Uri.to_string url) in
-    let _ = Sqlite3.step stmt in
-    let _ = Sqlite3.db_close db in
-    get_html id chat_id url
+    try
+      let db = Database.open_db () in
+      let _ = Database.begin_transaction db in
+      try      
+        let stmt = Database.update_item_url_stmt db id (Uri.to_string url) in
+        let _ = Sqlite3.step stmt in
+        let _ = Sqlite3.db_close db in
+        get_html id chat_id url
+      with Sqlite3.Error s | Sqlite3.InternalError s ->
+        let _ = Database.rollback db in
+        let _ = Sqlite3.db_close db in
+        Log.error "%s" s;
+        get_html id chat_id url
+    with Sqlite3.Error s | Sqlite3.InternalError s ->
+      Log.error "%s" s;
+      get_html id chat_id url
   end
   else if (code = 200) then begin
     body |> Cohttp_lwt.Body.to_string
   end
-  else raise (Http_error (Uri.to_string url)) (* TODO improve error handling *)
+  else raise (Http_error (code, Uri.to_string url)) (* TODO improve error handling *)
 
 module Make
     (Parser : sig
@@ -89,8 +100,10 @@ module Make
           let%lwt () = float_of_int Object.interval |> Lwt_unix.sleep in
           run id chat_id (Some price) ()
       | None -> run id chat_id (Some price) ()
-    with Http_error s ->
-      print_endline s; run id chat_id previous_price ()
+    with
+      Http_error (code, s) -> Log.error "HTTP Code: %d - %s" code s; run id chat_id previous_price ()
+    | e -> Printexc.to_string e |> Log.error "URL: %s\n%s" (Uri.to_string Object.url); run id chat_id previous_price ()
+
 end
 
 let get_site url =

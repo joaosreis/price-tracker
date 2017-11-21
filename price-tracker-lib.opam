@@ -17,4 +17,5 @@ depends: [
   "lwt_ssl"
   "telegraml"
   "sqlite3"
+  "dolog"
 ]

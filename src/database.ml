@@ -2,29 +2,58 @@ open Sqlite3
 
 let open_db () = db_open "pricetracker.db"
 
-let initialize db =
-  let sql =
-    "CREATE TABLE IF NOT EXISTS chats (
-      chat_id integer PRIMARY KEY,
-      interval int NOT NULL
-    );
-
-  CREATE TABLE IF NOT EXISTS items (
-    id integer PRIMARY KEY AUTOINCREMENT,
-    chat_id integer,
-    url text NOT NULL,
-    stock integer,
-    price float,
-    FOREIGN KEY (chat_id) REFERENCES chats(chat_id)
-    ON DELETE CASCADE ON UPDATE CASCADE
-  );" in
-  exec db sql
-
 let begin_transaction db = Sqlite3.exec db "BEGIN TRANSACTION;"
 
 let commit db = Sqlite3.exec db "COMMIT;"
 
 let rollback db = Sqlite3.exec db "ROLLBACK;"
+
+let try_operation f =
+  try
+    let db = open_db () in
+    let _ = begin_transaction db in
+    try
+      let success, result = f db in
+      if (success) then
+        let _ = commit db in
+        let _ = db_close db in
+        result
+      else
+        let _ = rollback db in
+        let _ = db_close db in
+        result
+    with
+      Error s | InternalError s ->
+        let _ = rollback db in
+        let _ = db_close db in
+        Log.error "%s" s;
+        None
+    | e ->
+        let _ = rollback db in
+        let _ = db_close db in
+        Printexc.to_string e |> Log.error "%s";
+        None
+  with Error s | InternalError s ->
+    Log.error "%s" s;
+    None
+
+let initialize db =
+  let sql =
+    "CREATE TABLE IF NOT EXISTS chats (
+        chat_id integer PRIMARY KEY,
+        interval int NOT NULL
+      );
+
+    CREATE TABLE IF NOT EXISTS items (
+      id integer PRIMARY KEY AUTOINCREMENT,
+      chat_id integer,
+      url text NOT NULL,
+      stock integer,
+      price float,
+      FOREIGN KEY (chat_id) REFERENCES chats(chat_id)
+      ON DELETE CASCADE ON UPDATE CASCADE
+    );" in
+  exec db sql
 
 let select_items_query = "SELECT id, items.chat_id, url, stock, price, interval FROM items LEFT JOIN chats ON items.chat_id = chats.chat_id"
 
