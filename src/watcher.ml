@@ -56,10 +56,10 @@ let rec get_html id chat_id url =
       Log.error "%s" s;
       get_html id chat_id url
   end
-  else if (code = 200) then begin
+  else if (code = 200) then
     body |> Cohttp_lwt.Body.to_string
-  end
-  else raise (Http_error (code, Uri.to_string url)) (* TODO improve error handling *)
+  else
+    Lwt.fail (Http_error (code, Uri.to_string url)) (* TODO improve error handling *)
 
 module Make
     (Parser : sig
@@ -75,7 +75,7 @@ module Make
 
   let rec run id chat_id previous_price () =
     let%lwt new_price = begin
-      try
+      try%lwt
         let%lwt html = get_html id chat_id Object.url in
         let name = Parser.get_name html in
         let price = Parser.get_price html in
@@ -102,7 +102,7 @@ module Make
         | None -> Lwt.return (Some price)
       with
         Http_error (code, s) -> Log.error "HTTP Code: %d - %s" code s; Lwt.return previous_price
-      | e -> Printexc.to_string e |> Log.error "URL: %s\n%s" (Uri.to_string Object.url); Lwt.return previous_price
+      | _ as e -> Printexc.to_string e |> Log.error "URL: %s\n%s" (Uri.to_string Object.url); Lwt.return previous_price
     end in
     let%lwt () = float_of_int Object.interval |> Lwt_unix.sleep in
     run id chat_id new_price ()
