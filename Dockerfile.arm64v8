@@ -1,4 +1,4 @@
-FROM opam:debian-arm64v8-stable
+FROM opam:alpine-arm64v8
 
 WORKDIR /home/opam/src
 
@@ -20,7 +20,7 @@ RUN sudo chown -R opam /home/opam/src && \
     opam config exec make && \
     opam depext -ln price-tracker-exe | egrep -o "\-\s.*" | sed "s/- //" > depexts
 
-FROM arm64v8/debian:stable
+FROM arm64v8/alpine
 
 WORKDIR /app
 
