@@ -10,6 +10,7 @@ let start message =
     let stmt = Database.insert_chat_stmt db message.chat.id 60 in
     let _ = step stmt in
     let _ = finalize stmt in
+    Log.info "New chat: %d" message.chat.id;
     true, Some (SendMessage (message.chat.id, "Para fazer tracking de um produto envie `/track url_do_produto`", Some Telegram.Api.ParseMode.Markdown, false, false, None, None)))
   |> Option.default (SendMessage (message.chat.id, "Ocorreu um erro, tente novamente", Some Telegram.Api.ParseMode.Markdown, false, false, None, None))
 
@@ -35,6 +36,7 @@ let track message  =
           let interval = 5 in
           let thread = Watcher.get_thread id message.chat.id url site None interval in
           Lwt.async thread;
+          Log.info "Tracking: URL - %s | Interval - %d | Chat id - %d" url 60 message.chat.id;
           true, Some Nothing
         with
           Not_found ->

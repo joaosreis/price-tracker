@@ -28,6 +28,6 @@ COPY --from=0 /home/opam/src/bin/price-tracker-exe price-tracker.exe
 
 COPY --from=0 /home/opam/src/depexts depexts
 
-RUN apt-get update && cat depexts | xargs apt-get install -y && rm -rf /var/cache/apt/*
+RUN cat depexts | xargs apk --update add && rm -rf /var/cache/apk/*
 
 CMD ./price-tracker.exe

@@ -74,35 +74,38 @@ module Make
   let price_key = Lwt.new_key
 
   let rec run id chat_id previous_price () =
-    try
-      let%lwt html = get_html id chat_id Object.url in
-      let name = Parser.get_name html in
-      let price = Parser.get_price html in
-      let price_string = match price with NoStock -> "Sem stock" | Stock p -> string_of_float p in
-      let message =
-        match previous_price with
-        | Some pp when not (Price.equal price pp) ->
-            let db = Database.open_db () in
-            let stmt = Database.update_item_price_stmt db id price in
-            let _ = Sqlite3.step stmt in
-            let _ = Sqlite3.db_close db in
-            Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\nAnterior: <i>%s</i>\n%s" name price_string (match pp with NoStock -> "Sem stock" | Stock p -> string_of_float p) (Uri.to_string Object.url))
-        | None ->
-            let db = Database.open_db () in
-            let stmt = Database.update_item_price_stmt db id price in
-            let _ = Sqlite3.step stmt in
-            let _ = Sqlite3.db_close db in
-            Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\n%s" name price_string (Uri.to_string Object.url))
-        | Some _ -> None in
-      match message with
-        Some m ->
-          let%lwt result = send_message chat_id m in
-          let%lwt () = float_of_int Object.interval |> Lwt_unix.sleep in
-          run id chat_id (Some price) ()
-      | None -> run id chat_id (Some price) ()
-    with
-      Http_error (code, s) -> Log.error "HTTP Code: %d - %s" code s; run id chat_id previous_price ()
-    | e -> Printexc.to_string e |> Log.error "URL: %s\n%s" (Uri.to_string Object.url); run id chat_id previous_price ()
+    let%lwt new_price = begin
+      try
+        let%lwt html = get_html id chat_id Object.url in
+        let name = Parser.get_name html in
+        let price = Parser.get_price html in
+        let price_string = match price with NoStock -> "Sem stock" | Stock p -> string_of_float p in
+        let message =
+          match previous_price with
+          | Some pp when not (Price.equal price pp) ->
+              let db = Database.open_db () in
+              let stmt = Database.update_item_price_stmt db id price in
+              let _ = Sqlite3.step stmt in
+              let _ = Sqlite3.db_close db in
+              Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\nAnterior: <i>%s</i>\n%s" name price_string (match pp with NoStock -> "Sem stock" | Stock p -> string_of_float p) (Uri.to_string Object.url))
+          | None ->
+              let db = Database.open_db () in
+              let stmt = Database.update_item_price_stmt db id price in
+              let _ = Sqlite3.step stmt in
+              let _ = Sqlite3.db_close db in
+              Some (Printf.sprintf "<b>%s</b>\nAtual: <i>%s</i>\n%s" name price_string (Uri.to_string Object.url))
+          | Some _ -> None in
+        match message with
+          Some m ->
+            let%lwt result = send_message chat_id m in
+            Lwt.return (Some price)
+        | None -> Lwt.return (Some price)
+      with
+        Http_error (code, s) -> Log.error "HTTP Code: %d - %s" code s; Lwt.return previous_price
+      | e -> Printexc.to_string e |> Log.error "URL: %s\n%s" (Uri.to_string Object.url); Lwt.return previous_price
+    end in
+    let%lwt () = float_of_int Object.interval |> Lwt_unix.sleep in
+    run id chat_id new_price ()
 
 end
 
