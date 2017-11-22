@@ -37,25 +37,14 @@ let rec get_html id chat_id url =
   let open Cohttp_lwt_unix in
   Client.get url >>= fun (resp, body) ->
   let code = resp |> Response.status |> Code.code_of_status in  
-  if (code = 302) then begin
+  if (code = 302) then
     let url = resp |> Response.headers |> Header.get_location |> Option.get in
-    try
+    let _ = Database.try_operation (fun db ->
       let db = Database.open_db () in
-      let _ = Database.begin_transaction db in
-      try      
-        let stmt = Database.update_item_url_stmt db id (Uri.to_string url) in
-        let _ = Sqlite3.step stmt in
-        let _ = Sqlite3.db_close db in
-        get_html id chat_id url
-      with Sqlite3.Error s | Sqlite3.InternalError s ->
-        let _ = Database.rollback db in
-        let _ = Sqlite3.db_close db in
-        Log.error "%s" s;
-        get_html id chat_id url
-    with Sqlite3.Error s | Sqlite3.InternalError s ->
-      Log.error "%s" s;
-      get_html id chat_id url
-  end
+      let stmt = Database.update_item_url_stmt db id (Uri.to_string url) in
+      let _ = Sqlite3.step stmt in
+      true, None) in
+    get_html id chat_id url
   else if (code = 200) then
     body |> Cohttp_lwt.Body.to_string
   else
@@ -102,7 +91,7 @@ module Make
         | None -> Lwt.return (Some price)
       with
         Http_error (code, s) -> Log.error "HTTP Code: %d - %s" code s; Lwt.return previous_price
-      | _ as e -> Printexc.to_string e |> Log.error "URL: %s\n%s" (Uri.to_string Object.url); Lwt.return previous_price
+      | _ as e -> Printexc.to_string e |> Log.error "URL: %s | Exception: %s" (Uri.to_string Object.url); Lwt.return previous_price
     end in
     let%lwt () = float_of_int Object.interval |> Lwt_unix.sleep in
     run id chat_id new_price ()
