@@ -1,4 +1,4 @@
-FROM ocaml/opam:alpine
+FROM ocaml/opam:alpine_ocaml-4.06.0
 
 WORKDIR /home/opam/src
 
@@ -9,8 +9,7 @@ RUN opam pin add -yn telegraml TelegraML/ && \
 
 COPY price-tracker-exe.opam .
 
-RUN sudo apk add unzip && \
-    opam pin add -yn price-tracker-exe . && \
+RUN opam pin add -yn price-tracker-exe . && \
     opam depext price-tracker-exe && \
     opam install --deps-only price-tracker-exe
 

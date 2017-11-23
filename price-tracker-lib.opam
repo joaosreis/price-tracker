@@ -12,7 +12,7 @@ build: [
 depends: [
   "jbuilder" {build & >= "1.0+beta14"}
   "batteries"
-  "cohttp-lwt-unix"
+  "cohttp-lwt-unix" { >= "1.0.0" }
   "lambdasoup"
   "lwt_ssl"
   "telegraml"
