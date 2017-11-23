@@ -37,29 +37,18 @@ let rec get_html id chat_id url =
   let open Cohttp_lwt_unix in
   Client.get url >>= fun (resp, body) ->
   let code = resp |> Response.status |> Code.code_of_status in  
-  if (code = 302) then begin
+  if (code = 302) then
     let url = resp |> Response.headers |> Header.get_location |> Option.get in
-    try
+    let _ = Database.try_operation (fun db ->
       let db = Database.open_db () in
-      let _ = Database.begin_transaction db in
-      try      
-        let stmt = Database.update_item_url_stmt db id (Uri.to_string url) in
-        let _ = Sqlite3.step stmt in
-        let _ = Sqlite3.db_close db in
-        get_html id chat_id url
-      with Sqlite3.Error s | Sqlite3.InternalError s ->
-        let _ = Database.rollback db in
-        let _ = Sqlite3.db_close db in
-        Log.error "%s" s;
-        get_html id chat_id url
-    with Sqlite3.Error s | Sqlite3.InternalError s ->
-      Log.error "%s" s;
-      get_html id chat_id url
-  end
-  else if (code = 200) then begin
+      let stmt = Database.update_item_url_stmt db id (Uri.to_string url) in
+      let _ = Sqlite3.step stmt in
+      true, None) in
+    get_html id chat_id url
+  else if (code = 200) then
     body |> Cohttp_lwt.Body.to_string
-  end
-  else raise (Http_error (code, Uri.to_string url)) (* TODO improve error handling *)
+  else
+    Lwt.fail (Http_error (code, Uri.to_string url)) (* TODO improve error handling *)
 
 module Make
     (Parser : sig
@@ -75,7 +64,7 @@ module Make
 
   let rec run id chat_id previous_price () =
     let%lwt new_price = begin
-      try
+      try%lwt
         let%lwt html = get_html id chat_id Object.url in
         let name = Parser.get_name html in
         let price = Parser.get_price html in
@@ -102,7 +91,7 @@ module Make
         | None -> Lwt.return (Some price)
       with
         Http_error (code, s) -> Log.error "HTTP Code: %d - %s" code s; Lwt.return previous_price
-      | e -> Printexc.to_string e |> Log.error "URL: %s\n%s" (Uri.to_string Object.url); Lwt.return previous_price
+      | _ as e -> Printexc.to_string e |> Log.error "URL: %s | Exception: %s" (Uri.to_string Object.url); Lwt.return previous_price
     end in
     let%lwt () = float_of_int Object.interval |> Lwt_unix.sleep in
     run id chat_id new_price ()
