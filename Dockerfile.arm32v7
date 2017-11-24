@@ -1,4 +1,4 @@
-FROM opam:alpine-arm64v8_ocaml-4.06.0
+FROM opam:debian-arm32v7-9
 
 WORKDIR /home/opam/src
 
@@ -28,6 +28,6 @@ COPY --from=0 /home/opam/src/bin/price-tracker-exe price-tracker.exe
 
 COPY --from=0 /home/opam/src/depexts depexts
 
-RUN cat depexts | xargs apk --update add && rm -rf /var/cache/apk/*
+RUN apt-get update && cat depexts | xargs apt-get install -y && rm -rf /var/cache/apt/*
 
 CMD ./price-tracker.exe
