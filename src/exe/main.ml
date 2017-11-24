@@ -4,10 +4,10 @@ let () =
   Log.set_log_level Log.DEBUG;
   Log.color_on();
 
-  let db = Database.open_db () in
-  let _ = Database.initialize db in
+  let db = Db.open_db () in
+  let _ = Db.initialize db in
   let open Sqlite3 in
-  let _ = exec db Database.select_items_query ~cb:(fun row _ ->
+  let _ = exec db Db.select_items_query ~cb:(fun row _ ->
     match row.(0), row.(1), row.(2), row.(3), row.(4), row.(5) with
       Some id, Some chat_id, Some url, Some stock, p, Some interval ->
         let price = if (Bool.of_string stock) then Some (Price.Stock (Option.get p |> float_of_string))
