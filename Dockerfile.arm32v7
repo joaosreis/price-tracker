@@ -2,6 +2,12 @@ FROM opam:debian-arm32v7-9
 
 WORKDIR /home/opam/src
 
+RUN sudo git clone https://github.com/joaosreis/ocaml-uri.git  && \
+    opam pin add -yn uri ocaml-uri/ && \
+    opam depext uri && \
+    opam install uri && \
+    sudo rm -rf ocaml-uri/
+
 COPY TelegraML/telegraml.opam TelegraML/
 
 RUN opam pin add -yn telegraml TelegraML/ && \
@@ -20,7 +26,7 @@ RUN sudo chown -R opam /home/opam/src && \
     opam config exec make && \
     opam depext -ln price-tracker-exe | egrep -o "\-\s.*" | sed "s/- //" > depexts
 
-FROM arm64v8/alpine
+FROM debian:9
 
 WORKDIR /app
 
