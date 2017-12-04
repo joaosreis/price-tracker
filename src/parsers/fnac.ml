@@ -6,4 +6,4 @@ let get_price html =
 let get_name html =
   let open Soup in
   let soup = parse html in
-  soup $ "span[itemprop='name']" |> R.leaf_text |> String.trim
+  soup $ "h1" |> R.leaf_text |> String.trim
