@@ -7,20 +7,9 @@ type website = [ `Alientech | `AmazonEspana | `Aquario | `Banggood | `BestGames 
 exception Http_error of int * string
 exception Not_supported of string
 
-module Bot = Telegram.Api.Mk(struct
-    include Telegram.BotDefaults
-
-    let token = Configuration.token
-  end)
-
 let send_message id text =
-  Bot.send_message ~chat_id:id
-    ~text:text
-    ~parse_mode:(Some Telegram.Api.ParseMode.Html)
-    ~disable_web_page_preview:false
-    ~disable_notification:false
-    ~reply_to:None
-    ~reply_markup:None
+  let open Telegram.Api in
+  Command.SendMessage(id, text, Some ParseMode.Html, false, false, None, None)
 
 let url_of_string s =
   let s1 = match Uri.of_string s |> Uri.host with
@@ -87,7 +76,7 @@ module Make
         Log.debug "Chat id: %d | URL: %s | Previous price: %s | Current price: %s" chat_id (Uri.to_string Object.url) (match previous_price with Some p -> Price.to_string p | None -> "None") (price_string);
         match message with
           Some m ->
-            let%lwt result = send_message chat_id m in
+            let%lwt () = send_message chat_id m |> Actions_queue.push in
             Lwt.return (Some price)
         | None -> Lwt.return (Some price)
       with

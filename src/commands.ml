@@ -32,7 +32,7 @@ let track message  =
       let site = Watcher.get_site url in
       match site with
         `NotSupported -> false, Some (SendMessage (message.chat.id, "Site não suportado", Some Telegram.Api.ParseMode.Markdown, false, false, None, None))
-      | _ ->
+      | _ ->  
           try
             let stmt = Db.insert_item_stmt db message.chat.id url in
             let _ = step stmt in
@@ -41,7 +41,7 @@ let track message  =
             let interval = 5 in
             let thread = Watcher.get_thread id message.chat.id url site None interval in
             Lwt.async thread;
-            Log.info "Tracking: URL - %s | Interval - %d | Chat id - %d" url 60 message.chat.id;
+            Log.info "Tracking: URL - %s | Interval - %d | Chat id - %d" url 90 message.chat.id;
             true, Some Nothing
           with
             Not_found ->

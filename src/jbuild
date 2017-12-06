@@ -1,7 +1,5 @@
 (jbuild_version 1)
 
-(copy_files# sample-src-folder1/*)
-(copy_files# sample-src-folder2/*)
 (copy_files# parsers/*)
 
 (library
