@@ -2,12 +2,14 @@ open Batteries
 open Telegram.Api
 open Telegram.Actions
 
+let interval = 90 (* TODO remove *)
+
 let start message =
   let open Sqlite3 in
   let open Message in
   let open Command in
   Db.try_operation (fun db ->
-    let stmt = Db.insert_chat_stmt db message.chat.id 60 in
+    let stmt = Db.insert_chat_stmt db message.chat.id interval in
     let _ = step stmt in
     let _ = finalize stmt in
     Log.info "New chat: %d" message.chat.id;
@@ -38,10 +40,9 @@ let track message  =
             let _ = step stmt in
             let _ = finalize stmt in
             let id = last_insert_rowid db in
-            let interval = 5 in
             let thread = Watcher.get_thread id message.chat.id url site None interval in
             Lwt.async thread;
-            Log.info "Tracking: URL - %s | Interval - %d | Chat id - %d" url 90 message.chat.id;
+            Log.info "Tracking: URL - %s | Interval - %d | Chat id - %d" url interval message.chat.id;
             true, Some Nothing
           with
             Not_found ->

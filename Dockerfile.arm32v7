@@ -8,10 +8,7 @@ RUN sudo git clone https://github.com/joaosreis/ocaml-uri.git  && \
     opam install uri && \
     sudo rm -rf ocaml-uri/
 
-COPY TelegraML/telegraml.opam TelegraML/
-
-RUN opam pin add -yn telegraml TelegraML/ && \
-    opam depext -u telegraml
+RUN opam remote add dev git://github.com/joaosreis/opam-repository
 
 COPY price-tracker-exe.opam .
 
