@@ -14,7 +14,7 @@ depends: [
   "batteries"
   "cohttp-lwt-unix" {>= "1.0.0"}
   "lambdasoup"
-  "telegraml"
+  "telegraml" {>= "2.1.5"}
   "sqlite3"
   "dolog"
 ]
