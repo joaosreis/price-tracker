@@ -71,7 +71,7 @@ let run ?(log=true) () =
     | GetUpdates f -> get_updates |> eval f
     | PeekUpdate f -> peek_update |> eval f
     | PopUpdate (run_cmds, f) -> pop_update ~run_cmds () |> eval f
-    | Chain (first, second) -> evaluator first >> evaluator second in
+    | Chain (first, second) -> evaluator first >>= fun () -> evaluator second in
   let rec loop () =
     let%lwt all = Actions_queue.get_all () in
     let%lwt () = evaluator all in

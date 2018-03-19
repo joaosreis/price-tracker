@@ -18,4 +18,6 @@ depends: [
   "telegraml" {>= "2.1.5"}
   "sqlite3"
   "dolog"
+  "lwt_ppx"
+  "yojson"
 ]

@@ -33,7 +33,9 @@ let track message  =
       let url = Str.matched_group 2 text in
       let site = Watcher.get_site url in
       match site with
-        `NotSupported -> false, Some (SendMessage (message.chat.id, "Site não suportado", Some Telegram.Api.ParseMode.Markdown, false, false, None, None))
+        `NotSupported ->
+          Log.warn "Not supported - %s" text;
+          false, Some (SendMessage (message.chat.id, "Site não suportado", Some Telegram.Api.ParseMode.Markdown, false, false, None, None))
       | _ ->  
           try
             let stmt = Db.insert_item_stmt db message.chat.id url in
@@ -46,7 +48,7 @@ let track message  =
             true, Some Nothing
           with
             Not_found ->
-              Log.warn "Unsupported URL - %s" text;
+              Log.warn "No URL - %s" text;
               false, Some (SendMessage (message.chat.id, "URL necessário", Some Telegram.Api.ParseMode.Markdown, false, false, None, None))
           | Watcher.Not_supported s ->
               Log.error "Not_supported, shouldn't have gotten here - %s" text;

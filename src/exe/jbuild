@@ -5,5 +5,5 @@
   (public_names (price-tracker-exe))
   (modules (main))
   (libraries (price-tracker-lib))
-  (preprocess (pps (lwt.ppx)))
+  (preprocess (pps (lwt_ppx)))
   (package price-tracker-exe)))
