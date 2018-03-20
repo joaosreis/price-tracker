@@ -1,8 +1,9 @@
 open Batteries
 
-type website = [ `Alientech | `AmazonEspana | `Aquario | `Banggood | `BestGames | `ElCorteIngles
-                | `Fnac | `GamingReplay | `GearBest | `Globaldata | `Mediamarkt | `Novoatalho
-                | `Pccomponentes | `Pcdiga | `ToyJapan | `Worten | `NotSupported ]
+type website = [ `Alientech | `AmazonEspana | `Aquario | `Banggood | `Base | `BestGames
+                | `ElCorteIngles | `Fnac | `GamingReplay | `GearBest | `Globaldata
+                | `Mediamarkt | `Novoatalho | `Pccomponentes | `Pcdiga | `ToyJapan
+                | `Worten | `NotSupported ]
 
 exception Http_error of int * string
 exception Not_supported of string
@@ -93,6 +94,7 @@ let get_site url =
   else if (String.exists url "amazon.es") then `AmazonEspana
   else if (String.exists url "aquario.pt") then `Aquario
   else if (String.exists url "banggood.com") then `Banggood
+  else if (String.exists url "base.com") then `Base
   else if (String.exists url "bestgames.pt") then `BestGames
   else if (String.exists url "elcorteingles.pt") then `ElCorteIngles
   else if (String.exists url "fnac.pt") then `Fnac
@@ -117,6 +119,7 @@ let get_thread id chat_id url site previous_price interval =
     | `AmazonEspana -> let module W = Make(AmazonEspana)(Object) in W.run
     | `Aquario  -> let module W = Make(Aquario)(Object) in W.run
     | `Banggood -> let module W = Make(Banggood)(Object) in W.run
+    | `Base -> let module W = Make(BaseCom)(Object) in W.run
     | `BestGames -> let module W = Make(BestGames)(Object) in W.run
     | `ElCorteIngles -> let module W = Make(Elcorteingles)(Object) in W.run
     | `Fnac -> let module W = Make(Fnac)(Object) in W.run
